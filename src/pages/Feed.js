@@ -1,5 +1,6 @@
 import React, { Component } from 'react'
 import api from '../services/api'
+import io from 'socket.io-client'
 
 import './Feed.css'
 
@@ -15,70 +16,71 @@ class Feed extends Component {
     }
 
     async componentDidMount() {
-        const response = await api.get('posts')
+        this.registerToSocket();
 
-        this.setState({ feed: response.data })
+        const response = await api.get('posts');
+
+        this.setState({ feed: response.data });
+    }
+
+    registerToSocket = () => {
+        const socket = io('http://localhost:3333');
+
+        //post, like
+
+        socket.on('post', newPost => {
+            this.setState({ feed: [newPost, ...this.state.feed] });
+        })
+
+        socket.on('like', likedPost => {
+            this.setState({
+                feed: this.state.feed.map(post =>
+                    post._id === likedPost.id ? likedPost : post
+                )
+            });
+        })
+    }
+
+    handleLike = id => {
+        api.post(`/posts/${id}/like`)
     }
 
     render() {
         return (
             <section id="post-list">
-                <article>
-                    <header>
-                        <div className="user-info">
-                            <span> Wlad'myr Almeida </span>
-                            <span className="place"> Patos</span>
-                        </div>
+                {this.state.feed.map(post => (
+                    <article key={post._id}>
+                        <header>
+                            <div className="user-info">
+                                <span> {post.author} </span>
+                                <span className="place"> {post.place}</span>
+                            </div>
 
-                        <img src={more} alt="Mais" />
-                    </header>
+                            <img src={more} alt="Mais" />
+                        </header>
 
-                    <img src="http://localhost:3333/files/allef-vinicius-331173.jpg" alt="" />
+                        <img src={`http://localhost:3333/files/${post.image}`} alt="" />
 
-                    <footer>
-                        <div className="actions">
-                            <img src={like} alt="" />
-                            <img src={comment} alt="" />
-                            <img src={send} alt="" />
-                        </div>
+                        <footer>
+                            <div className="actions">
+                                <button>
+                                    <img src={like} onClick={() => this.handleLike(post._id)} alt="" />
+                                </button>
 
-                        <strong>1500 curtidas</strong>
+                                <img src={comment} alt="" />
+                                <img src={send} alt="" />
+                            </div>
 
-                        <p>Um post muito massa feito na OmniStack!
-                            <span>#react #reactnative #node #OmniStack</span>
-                        </p>
-                    </footer>
+                            <strong> {post.likes} </strong>
 
-                </article>
+                            <p>
+                                {post.description}
+                                <span>{post.hashtags}</span>
+                            </p>
+                        </footer>
 
-                <article>
-                    <header>
-                        <div className="user-info">
-                            <span> Wlad'myr Almeida </span>
-                            <span className="place"> Patos</span>
-                        </div>
-
-                        <img src={more} alt="Mais" />
-                    </header>
-
-                    <img src="http://localhost:3333/files/allef-vinicius-331173.jpg" alt="" />
-
-                    <footer>
-                        <div className="actions">
-                            <img src={like} alt="" />
-                            <img src={comment} alt="" />
-                            <img src={send} alt="" />
-                        </div>
-
-                        <strong>1500 curtidas</strong>
-
-                        <p>Um post muito massa feito na OmniStack!
-                            <span>#react #reactnative #node #OmniStack</span>
-                        </p>
-                    </footer>
-
-                </article>
-
+                    </article>
+                ))}
             </section>
         )
     }
